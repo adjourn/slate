@@ -6,7 +6,7 @@ import warning from 'tiny-warning'
 import Types from 'prop-types'
 import { PathUtils } from 'slate'
 
-import Void from './void'
+// import Void from './void'
 import Text from './text'
 import DATA_ATTRS from '../constants/data-attributes'
 
@@ -172,7 +172,7 @@ class Node extends React.Component {
     } = this.props
 
     const newDecorations = node.getDecorations(editor)
-    const children = node.nodes.toArray().map((child, i) => {
+    let children = node.nodes.toArray().map((child, i) => {
       const Component = child.object === 'text' ? Text : Node
       const sel = selection && getRelativeRange(node, i, selection)
 
@@ -217,8 +217,49 @@ class Node extends React.Component {
       ref: this.ref,
     }
 
-    // If it's a block node with inline children, add the proper `dir` attribute
-    // for text direction.
+    // Code for void elements (prototype).
+
+    let voidAttrs = {}
+    let spacer = null
+
+    if (editor.isVoid(node)) {
+      // Set content `contenteditable` to `false` for non-block void nodes.
+      if (node.object !== 'block' && !readOnly) {
+        attributes['contentEditable'] = false
+      }
+
+      // Attributes for void element wrapper.
+      voidAttrs = {
+        [DATA_ATTRS.VOID]: true,
+        [DATA_ATTRS.KEY]: node.key,
+        ['contentEditable']: readOnly || node.object === 'block' ? null : false
+      }
+
+      // Spacer for void element to catch native selection.
+      if (!readOnly) {
+        const style = {
+          height: '0',
+          color: 'transparent',
+          outline: 'none',
+          position: 'absolute',
+        }
+
+        const spacerAttrs = {
+          [DATA_ATTRS.SPACER]: true,
+        }
+
+        const Tag = node.object === 'block' ? 'div' : 'span'
+
+        spacer = (
+          <Tag style={style} {...spacerAttrs}>
+            {this.renderSpacer()}
+          </Tag>
+        )
+      }
+    }
+
+    // If it's a block node with inline children, add the proper `dir`
+    // attribute for text direction.
     if (node.isLeafBlock()) {
       const direction = node.getTextDirection()
       if (direction === 'rtl') attributes.dir = 'rtl'
@@ -234,7 +275,10 @@ class Node extends React.Component {
       render = 'renderInline'
     }
 
-    const element = editor.run(render, {
+    return editor.run(render, {
+      voidAttrs,
+      spacer,
+
       attributes,
       children,
       editor,
@@ -244,22 +288,44 @@ class Node extends React.Component {
       parent,
       readOnly,
     })
+  }
 
-    return editor.isVoid(node) ? (
-      <Void
-        {...this.props}
-        textRef={ref => {
+  /**
+   * Return spacer text for void element.
+   *
+   * @param {Object} props
+   * @return {Element}
+   */
+
+  renderSpacer = () => {
+    const {
+      annotations,
+      block,
+      decorations,
+      node,
+      readOnly,
+      editor,
+    } = this.props
+    const child = node.getFirstText()
+    return (
+      <Text
+        ref={ref => {
           if (ref) {
             this.tmp.nodeRefs[0] = ref
           } else {
             delete this.tmp.nodeRefs[0]
           }
         }}
-      >
-        {element}
-      </Void>
-    ) : (
-      element
+
+        annotations={annotations}
+        block={node.object === 'block' ? node : block}
+        decorations={decorations}
+        editor={editor}
+        key={child.key}
+        node={child}
+        parent={node}
+        readOnly={readOnly}
+      />
     )
   }
 }

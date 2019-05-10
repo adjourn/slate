@@ -139,17 +139,23 @@ class Images extends React.Component {
     switch (node.type) {
       case 'image': {
         const src = node.data.get('src')
+
         return (
-          <img
-            {...attributes}
-            src={src}
-            className={css`
-              display: block;
-              max-width: 100%;
-              max-height: 20em;
-              box-shadow: ${isFocused ? '0 0 0 2px blue;' : 'none'};
-            `}
-          />
+          <div {...props.voidAttrs}>
+            {props.spacer}
+            <div contentEditable={false}>
+              <img
+                {...attributes}
+                src={src}
+                className={css`
+                  display: block;
+                  max-width: 100%;
+                  max-height: 20em;
+                  box-shadow: ${isFocused ? '0 0 0 2px blue;' : 'none'};
+                `}
+              />
+            </div>
+          </div>
         )
       }
 
